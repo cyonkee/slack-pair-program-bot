@@ -2,6 +2,7 @@ require('dotenv').config({ path: './config/.env' });
 const { App } = require('@slack/bolt');
 const { SLACK_APP_TOKEN, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET } = process.env;
 const channelsMap = require('./config/channel-user-map.json');
+const buttonsMap = require('./config/buttons-map.json');
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -75,9 +76,39 @@ const postMessage = async (channelId, channelMembers) => {
     }
 }
 
+const getButton = (buttonNumber) => {
+    try {
+        return button = buttonsMap[buttonNumber]
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+const showButton = async (channelId, buttonNumber) => {
+    try {
+        const result = await app.client.chat.postMessage(
+            {
+                channel: channelId,
+                text: "The Coolest Button in the Universe",
+                blocks: [getButton(buttonNumber)]
+            }
+        );
+        console.log(result);
+        app.action("radio_buttons-action", async ({ action, ack, respond }) => {
+            await ack();
+            console.log(action);
+            await respond(`You chose: ${action.selected_option.value}`);
+
+        });
+    } catch (error) {
+        console.log(error);
+    }
+}
+
 (async () => {
     await app.start(process.env.PORT || 3000);
     console.log('⚡️ Bolt app is running!');
+    /*
     for (const channel of channelsMap) {
         const { slackChannelName, excludedMemberEmails } = channel;
         const channelId = await getChannelId(slackChannelName);
@@ -86,4 +117,6 @@ const postMessage = async (channelId, channelMembers) => {
         const selectedMembers = getTwoRandomMembersFromList(filteredChannelMembers);
         await postMessage(channelId, selectedMembers);
     }
+    */
+   await showButton(await getChannelId('slackathon'), 0);
 })();
