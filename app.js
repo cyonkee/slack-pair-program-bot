@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { App } = require('@slack/bolt');
 const { SLACK_APP_TOKEN, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET } = process.env;
+const channelsMap = require('./channel-user-map.json');
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -10,22 +11,32 @@ const app = new App({
     token: SLACK_BOT_TOKEN,
 });
 
-async function findChannelId(name) {
+const getChannelId = async (channelName) => {
     try {
-        const result = await app.client.conversations.list();
-        return result.channels.find(channel => channel.name === name).id;
+        const { channels } = await app.client.conversations.list();
+        return channels.find(channel => channel.name === channelName).id;
     }
     catch (error) {
         console.error(error);
     }
 }
 
-async function postMessage(channelId) {
+const getChannelMembers = async (channelId) =>  {
     try {
-        // Call the chat.postMessage method using the WebClient
+        const { members } = await app.client.conversations.members({ channel: channelId });
+        return members;
+    }
+    catch (error) {
+        console.error(error);
+    }
+}
+
+const postMessage = async (channelId, channelMembers) => {
+    try {
+        const memberText = channelMembers.map(member => `<@${member}>`);
         const result = await app.client.chat.postMessage({
             channel: channelId,
-            text: "Hello world"
+            text: memberText
         });
 
         console.log(result);
@@ -35,9 +46,34 @@ async function postMessage(channelId) {
     }
 }
 
+const getUserIdByEmail = async (email) => {
+    try {
+        const { user } = await app.client.users.lookupByEmail({ email });
+        return user.id;
+    }
+    catch (error) {
+        console.error(error);
+    }
+}
+
+const filterChannelMembers = async (channelMembers, excludedMemberEmails) => {
+    try {
+        const exludedUserIds = await Promise.all(excludedMemberEmails.map(async (email) => getUserIdByEmail(email)));
+        return channelMembers.filter(member => !exludedUserIds.includes(member));
+    }
+    catch (error) {
+        console.error(error);
+    }
+}
+
 (async () => {
     await app.start(process.env.PORT || 3000);
     console.log('⚡️ Bolt app is running!');
-    const channelId = await findChannelId('slackathon');
-    postMessage(channelId);
+    for (const channel of channelsMap) {
+        const { slackChannelName, excludedMemberEmails } = channel;
+        const channelId = await getChannelId(slackChannelName);
+        const channelMembers = await getChannelMembers(channelId);
+        const filteredChannelMembers = await filterChannelMembers(channelMembers, excludedMemberEmails);
+        await postMessage(channelId, filteredChannelMembers);
+    }
 })();

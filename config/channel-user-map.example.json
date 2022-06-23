@@ -1,0 +1,17 @@
+[
+    {
+        "slackChannelName": "slackathon",
+        "excludedMemberEmails": [
+            "user1-email@example.com",
+            "user2-email@example.com",
+            "user3-email@example.com"
+        ]
+    },
+    {
+        "slackChannelName": "other channel",
+        "excludedMemberEmails": [
+            "user1-email@example.com",
+            "user4-email@example.com"
+        ]
+    }
+]
