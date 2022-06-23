@@ -1,0 +1,99 @@
+[
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": "<user1> and <user2>, do you want to pair program today?"
+        },
+        "accessory": {
+            "type": "radio_buttons",
+            "options": [
+                {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Sure!",
+                        "emoji": true
+                    },
+                    "value": "value-0"
+                },
+                {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Can't today :slightly_frowning_face:",
+                        "emoji": true
+                    },
+                    "value": "value-1"
+                }
+            ],
+            "action_id": "radio_buttons-action"
+        }
+    },
+    {
+        "type": "input",
+        "element": {
+            "type": "checkboxes",
+            "options": [
+                {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "30 minutes",
+                        "emoji": true
+                    },
+                    "value": "value-0"
+                },
+                {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "45 minutes",
+                        "emoji": true
+                    },
+                    "value": "value-1"
+                },
+                {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "1 whole hour!",
+                        "emoji": true
+                    },
+                    "value": "value-2"
+                }
+            ],
+            "action_id": "checkboxes-action"
+        },
+        "label": {
+            "type": "plain_text",
+            "text": "How long do you want to pair?",
+            "emoji": true
+        }
+    },
+    {
+        "type": "input",
+        "element": {
+            "type": "checkboxes",
+            "options": [
+                {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "AM",
+                        "emoji": true
+                    },
+                    "value": "value-0"
+                },
+                {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "PM",
+                        "emoji": true
+                    },
+                    "value": "value-1"
+                }
+            ],
+            "action_id": "checkboxes-action"
+        },
+        "label": {
+            "type": "plain_text",
+            "text": "Morning or afternoon?",
+            "emoji": true
+        }
+    }
+]
