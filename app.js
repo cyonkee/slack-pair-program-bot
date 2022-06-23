@@ -76,7 +76,7 @@ const postMessage = async (channelId, channelMembers) => {
     }
 }
 
-const getButton = async (buttonNumber) => {
+const getButton = (buttonNumber) => {
     try {
         return button = buttonsMap[buttonNumber]
     } catch (error) {
@@ -90,12 +90,13 @@ const showButton = async (channelId, buttonNumber) => {
             {
                 channel: channelId,
                 text: "The Coolest Button in the Universe",
-                blocks: getButton(buttonNumber)
+                blocks: [getButton(buttonNumber)]
             }
         );
         console.log(result);
         app.action("radio_buttons-action", async ({ action, ack, respond }) => {
             await ack();
+            console.log(action);
             await respond(`You chose: ${action.selected_option.value}`);
 
         });
@@ -107,6 +108,7 @@ const showButton = async (channelId, buttonNumber) => {
 (async () => {
     await app.start(process.env.PORT || 3000);
     console.log('⚡️ Bolt app is running!');
+    /*
     for (const channel of channelsMap) {
         const { slackChannelName, excludedMemberEmails } = channel;
         const channelId = await getChannelId(slackChannelName);
@@ -115,4 +117,6 @@ const showButton = async (channelId, buttonNumber) => {
         const selectedMembers = getTwoRandomMembersFromList(filteredChannelMembers);
         await postMessage(channelId, selectedMembers);
     }
+    */
+   await showButton(await getChannelId('slackathon'), 0);
 })();
