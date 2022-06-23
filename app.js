@@ -2,6 +2,7 @@ require('dotenv').config({ path: './config/.env' });
 const { App } = require('@slack/bolt');
 const { SLACK_APP_TOKEN, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET } = process.env;
 const channelsMap = require('./config/channel-user-map.json');
+const buttonsMap = require('./config/buttons-map.json');
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
