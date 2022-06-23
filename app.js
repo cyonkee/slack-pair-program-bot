@@ -44,8 +44,8 @@ const getUserIdByEmail = async (email) => {
 
 const filterChannelMembers = async (channelMembers, excludedMemberEmails) => {
     try {
-        const exludedUserIds = await Promise.all(excludedMemberEmails.map(async (email) => getUserIdByEmail(email)));
-        return channelMembers.filter(member => !exludedUserIds.includes(member));
+        const excludedUserIds = await Promise.all(excludedMemberEmails.map(async (email) => getUserIdByEmail(email)));
+        return channelMembers.filter(member => !excludedUserIds.includes(member));
     }
     catch (error) {
         console.error(error);
