@@ -1,8 +1,7 @@
-require('dotenv').config();
+require('dotenv').config({ path: './config/.env' });
 const { App } = require('@slack/bolt');
 const { SLACK_APP_TOKEN, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET } = process.env;
-const channelsMap = require('./channel-user-map.json');
-const buttonsMap = require('./buttons-map.json');
+const channelsMap = require('./config/channel-user-map.json');
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -32,21 +31,6 @@ const getChannelMembers = async (channelId) =>  {
     }
 }
 
-const postMessage = async (channelId, channelMembers) => {
-    try {
-        const memberText = channelMembers.map(member => `<@${member}>`);
-        const result = await app.client.chat.postMessage({
-            channel: channelId,
-            text: memberText
-        });
-
-        console.log(result);
-    }
-    catch (error) {
-        console.error(error);
-    }
-}
-
 const getUserIdByEmail = async (email) => {
     try {
         const { user } = await app.client.users.lookupByEmail({ email });
@@ -59,8 +43,32 @@ const getUserIdByEmail = async (email) => {
 
 const filterChannelMembers = async (channelMembers, excludedMemberEmails) => {
     try {
-        const excludedUserIds = await Promise.all(excludedMemberEmails.map(async (email) => getUserIdByEmail(email)));
-        return channelMembers.filter(member => !excludedUserIds.includes(member));
+        const exludedUserIds = await Promise.all(excludedMemberEmails.map(async (email) => getUserIdByEmail(email)));
+        return channelMembers.filter(member => !exludedUserIds.includes(member));
+    }
+    catch (error) {
+        console.error(error);
+    }
+}
+
+const getRandomMemberFromList = (members) => (members[Math.floor((Math.random() * members.length))]);
+
+const getTwoRandomMembersFromList = (members) => {
+    const member1 = getRandomMemberFromList(members);
+    const remainingMembers = members.filter(member => member !== member1);
+    const member2 = getRandomMemberFromList(remainingMembers);
+    return [member1, member2];
+}
+
+const postMessage = async (channelId, channelMembers) => {
+    try {
+        const memberText = channelMembers.map(member => `<@${member}>`);
+        const result = await app.client.chat.postMessage({
+            channel: channelId,
+            text: memberText
+        });
+
+        console.log(result);
     }
     catch (error) {
         console.error(error);
@@ -103,6 +111,7 @@ const showButton = async (channelId, buttonNumber) => {
         const channelId = await getChannelId(slackChannelName);
         const channelMembers = await getChannelMembers(channelId);
         const filteredChannelMembers = await filterChannelMembers(channelMembers, excludedMemberEmails);
-        await postMessage(channelId, filteredChannelMembers);
+        const selectedMembers = getTwoRandomMembersFromList(filteredChannelMembers);
+        await postMessage(channelId, selectedMembers);
     }
 })();
