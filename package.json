@@ -1,5 +1,5 @@
 {
-  "name": "pair_program_bot",
+  "name": "slack-pair-program-bot",
   "version": "1.0.0",
   "description": "",
   "main": "app.js",

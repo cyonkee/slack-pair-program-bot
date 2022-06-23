@@ -10,20 +10,10 @@ const app = new App({
     token: SLACK_BOT_TOKEN,
 });
 
-// Find conversation ID using the conversations.list method
 async function findChannelId(name) {
     try {
-        // Call the conversations.list method using the built-in WebClient
-        const result = await app.client.conversations.list({
-            // The token you used to initialize your app
-            token: SLACK_BOT_TOKEN
-        });
-
-        for (const channel of result.channels) {
-            if (channel.name === name) {
-                return channel.id;
-            }
-        }
+        const result = await app.client.conversations.list();
+        return result.channels.find(channel => channel.name === name).id;
     }
     catch (error) {
         console.error(error);
@@ -46,13 +36,8 @@ async function postMessage(channelId) {
 }
 
 (async () => {
-    // Start your app
     await app.start(process.env.PORT || 3000);
     console.log('⚡️ Bolt app is running!');
-})();
-
-(async () => {
-    // Find channel with a specified channel `name`
     const channelId = await findChannelId('slackathon');
     postMessage(channelId);
 })();
