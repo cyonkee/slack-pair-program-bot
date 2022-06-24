@@ -2,7 +2,7 @@ require('dotenv').config({ path: './config/.env' });
 const { App } = require('@slack/bolt');
 const { SLACK_APP_TOKEN, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET } = process.env;
 const channelsMap = require('./config/channel-user-map.json');
-const buttonsMap = require('./config/buttons-map.json');
+const blocksMap = require('./config/blocks-map.json');
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -44,8 +44,8 @@ const getUserIdByEmail = async (email) => {
 
 const filterChannelMembers = async (channelMembers, excludedMemberEmails) => {
     try {
-        const exludedUserIds = await Promise.all(excludedMemberEmails.map(async (email) => getUserIdByEmail(email)));
-        return channelMembers.filter(member => !exludedUserIds.includes(member));
+        const excludedUserIds = await Promise.all(excludedMemberEmails.map(async (email) => getUserIdByEmail(email)));
+        return channelMembers.filter(member => !excludedUserIds.includes(member));
     }
     catch (error) {
         console.error(error);
@@ -61,62 +61,86 @@ const getTwoRandomMembersFromList = (members) => {
     return [member1, member2];
 }
 
-const postMessage = async (channelId, channelMembers) => {
+const postMessageBlocks = async (channelId, selectedMembers) => {
     try {
-        const memberText = channelMembers.map(member => `<@${member}>`);
-        const result = await app.client.chat.postMessage({
-            channel: channelId,
-            text: memberText
-        });
-
-        console.log(result);
-    }
-    catch (error) {
-        console.error(error);
-    }
-}
-
-const getButton = (buttonNumber) => {
-    try {
-        return button = buttonsMap[buttonNumber]
-    } catch (error) {
-        console.error(error);
-    }
-}
-
-const showButton = async (channelId, buttonNumber) => {
-    try {
+        const configuredBlocks = mapSelectedMembersToBlocks(selectedMembers);
         const result = await app.client.chat.postMessage(
             {
                 channel: channelId,
-                text: "The Coolest Button in the Universe",
-                blocks: [getButton(buttonNumber)]
+                text: "Time for pair programming!",
+                blocks: configuredBlocks
             }
         );
         console.log(result);
-        app.action("radio_buttons-action", async ({ action, ack, respond }) => {
-            await ack();
-            console.log(action);
-            await respond(`You chose: ${action.selected_option.value}`);
 
+        // TODO:
+            // check if correct user responded
+                // if not then { say } (with witty snark)
+            // If rejection then { respond } (with witty snark)
+            // If approval then { say } (user accepted, what say you other user?)
+                // try to hide those buttons
+            // figure out if we can use sockets?
+                // if not then do we need a exposed http url?
+            // deploy on AWS or Heroku depending on devops questions
+            // install the app on TS workspace
+            // update the env tokens, channels, exclusions, etc.
+            // stretch goals: add time, availability, gcal integration
+
+        app.action("radio_buttons-action-user1", async (msg) => {
+            await msg.ack();
+            await msg.respond(`You chose: ${msg.action.selected_option.value}`);
+        });
+        app.action("radio_buttons-action-user2", async (msg) => {
+            await msg.ack();
+            await msg.respond(`You chose: ${msg.action.selected_option.value}`);
         });
     } catch (error) {
         console.log(error);
     }
 }
 
+const mapSelectedMembersToBlocks = (selectedMembers) => {
+    return blocksMap.map((block) => {
+        if (block.block_id === 'titleMessage') {
+            return {
+                ...block,
+                text: {
+                    ...block.text,
+                    text: `Hello there! <@${selectedMembers[0]}> & <@${selectedMembers[1]}>, would you like to pair today?`
+                }
+            }
+        }
+        if (block.block_id === 'user1Radios') {
+            return {
+                ...block,
+                text: {
+                    ...block.text,
+                    text: `*<@${selectedMembers[0]}>*`
+                }
+            }
+        }
+        if (block.block_id === 'user2Radios') {
+            return {
+                ...block,
+                text: {
+                    ...block.text,
+                    text: `*<@${selectedMembers[1]}>*`
+                }
+            }
+        }
+        return block;
+    });
+}
+
 (async () => {
     await app.start(process.env.PORT || 3000);
     console.log('⚡️ Bolt app is running!');
-    /*
     for (const channel of channelsMap) {
         const { slackChannelName, excludedMemberEmails } = channel;
         const channelId = await getChannelId(slackChannelName);
         const channelMembers = await getChannelMembers(channelId);
         const filteredChannelMembers = await filterChannelMembers(channelMembers, excludedMemberEmails);
         const selectedMembers = getTwoRandomMembersFromList(filteredChannelMembers);
-        await postMessage(channelId, selectedMembers);
+        await postMessageBlocks(channelId, selectedMembers);
     }
-    */
-   await showButton(await getChannelId('slackathon'), 0);
 })();
