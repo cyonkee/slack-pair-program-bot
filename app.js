@@ -2,6 +2,7 @@ require('dotenv').config({ path: './config/.env' });
 const { App } = require('@slack/bolt');
 const { SLACK_APP_TOKEN, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET } = process.env;
 const channelsMap = require('./config/channel-user-map.json');
+const schedule = require('node-schedule');
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -144,7 +145,7 @@ const postEphemeralMessage = async (channelId, selectedMembers, i) => {
                                         text: 'Sure!',
                                         emoji: true
                                     },
-                                    value: `user${i}-yes`
+                                    value: `accept`
                                 },
                                 {
                                     text: {
@@ -152,10 +153,10 @@ const postEphemeralMessage = async (channelId, selectedMembers, i) => {
                                         text: `Can't today :slightly_frowning_face:`,
                                         emoji: true
                                     },
-                                    value: `user${i}-no`
+                                    value: `reject`
                                 }
                             ],
-                            action_id: `radio_buttons-action-user${i}`
+                            action_id: `radio_buttons-action-user${i}-${channelId}`
                         }
                     },
                 ]
@@ -180,14 +181,14 @@ const registerActionListener = (channelId, selectedMembers, i) => {
         // expose http url
         // stretch goals: add time, availability, gcal integration
         
-        app.action(`radio_buttons-action-user${i}`, async ({ ack, action, respond }) => {
+        app.action(`radio_buttons-action-user${i}-${channelId}`, async ({ ack, payload, respond }) => {
             await ack();
-            if (action.selected_option.value === `user${i}-no`) {
+            if (payload.selected_option.value === `reject`) {
                 await respond({ delete_original: true});
                 await postRejectionMessage(channelId, selectedMembers[i]);
                 
             }
-            if (action.selected_option.value === `user${i}-yes`) {
+            if (payload.selected_option.value === `accept`) {
                 await respond({ delete_original: true});
                 await postSuccessMessage(channelId, selectedMembers[i]);
             }
@@ -226,15 +227,18 @@ const postRejectionMessage = async (channelId, selectedMember) => {
 (async () => {
     await app.start(process.env.PORT || 3000);
     console.log('⚡️ Bolt app is running!');
+
     for (const channel of channelsMap) {
         const { slackChannelName, excludedMemberEmails } = channel;
         const channelId = await getChannelId(slackChannelName);
         const channelMembers = await getChannelMembers(channelId);
         const filteredChannelMembers = await filterChannelMembers(channelMembers, excludedMemberEmails);
         const selectedMembers = getTwoRandomMembersFromList(filteredChannelMembers);
-        await postTitleMessage(channelId, selectedMembers);
-        await postWhatSayYouMessages(channelId, selectedMembers);
-        await postEphemeralMessages(channelId, selectedMembers);
         registerActionListeners(channelId, selectedMembers);
+        schedule.scheduleJob('0 15 * * 2-4', async () => {
+            await postTitleMessage(channelId, selectedMembers);
+            await postWhatSayYouMessages(channelId, selectedMembers);
+            await postEphemeralMessages(channelId, selectedMembers);
+        });
     }
 })();
