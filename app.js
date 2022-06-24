@@ -2,7 +2,6 @@ require('dotenv').config({ path: './config/.env' });
 const { App } = require('@slack/bolt');
 const { SLACK_APP_TOKEN, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET } = process.env;
 const channelsMap = require('./config/channel-user-map.json');
-const blocksMap = require('./config/blocks-map.json');
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -22,7 +21,7 @@ const getChannelId = async (channelName) => {
     }
 }
 
-const getChannelMembers = async (channelId) =>  {
+const getChannelMembers = async (channelId) => {
     try {
         const { members } = await app.client.conversations.members({ channel: channelId });
         return members;
@@ -55,81 +54,173 @@ const filterChannelMembers = async (channelMembers, excludedMemberEmails) => {
 const getRandomMemberFromList = (members) => (members[Math.floor((Math.random() * members.length))]);
 
 const getTwoRandomMembersFromList = (members) => {
-    const member1 = getRandomMemberFromList(members);
-    const remainingMembers = members.filter(member => member !== member1);
-    const member2 = getRandomMemberFromList(remainingMembers);
-    return [member1, member2];
+    const member0 = getRandomMemberFromList(members);
+    const remainingMembers = members.filter(member => member !== member0);
+    const member1 = getRandomMemberFromList(remainingMembers);
+    return [member0, member1];
 }
 
-const postMessageBlocks = async (channelId, selectedMembers) => {
+const postTitleMessage = async (channelId, selectedMembers) => {
     try {
-        const configuredBlocks = mapSelectedMembersToBlocks(selectedMembers);
-        const result = await app.client.chat.postMessage(
+        await app.client.chat.postMessage(
             {
                 channel: channelId,
-                text: "Time for pair programming!",
-                blocks: configuredBlocks
+                text: 'Time for pair programming!',
+                blocks: [
+                    {
+                        type: 'section',
+                        block_id: 'titleMessage',
+                        text: {
+                            type: 'mrkdwn',
+                            text: `Hello, <@${selectedMembers[0]}> & <@${selectedMembers[1]}> would you like to pair today?`
+                        }
+                    },
+                    {
+                        type: 'divider',
+                        block_id: 'divider'
+                    }
+                ]
             }
         );
-        console.log(result);
+    } catch (error) {
+        console.log(error);
+    }
+}
 
+const postWhatSayYouMessages = async (channelId, selectedMembers) => {
+    try {
+        await app.client.chat.postMessage(
+            {
+                channel: channelId,
+                text: 'Time for pair programming!',
+                blocks: [
+                    {
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: `What say you, <@${selectedMembers[0]}>?`
+                        }
+                    },
+                    {
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: `What say you, <@${selectedMembers[1]}>?`
+                        }
+                    },
+                ]
+            }
+        );
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+const postEphemeralMessages = async (channelId, selectedMembers) => {
+    await postEphemeralMessage(channelId, selectedMembers, 0);
+    await postEphemeralMessage(channelId, selectedMembers, 1);
+}
+
+const postEphemeralMessage = async (channelId, selectedMembers, i) => {
+    try {
+        await app.client.chat.postEphemeral(
+            {
+                channel: channelId,
+                user: selectedMembers[i],
+                text: 'Time for pair programming!',
+                blocks: [
+                    {
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: `*<@${selectedMembers[i]}>*`
+                        },
+                        accessory: {
+                            type: 'radio_buttons',
+                            options: [
+                                {
+                                    text: {
+                                        type: 'plain_text',
+                                        text: 'Sure!',
+                                        emoji: true
+                                    },
+                                    value: `user${i}-yes`
+                                },
+                                {
+                                    text: {
+                                        type: 'plain_text',
+                                        text: `Can't today :slightly_frowning_face:`,
+                                        emoji: true
+                                    },
+                                    value: `user${i}-no`
+                                }
+                            ],
+                            action_id: `radio_buttons-action-user${i}`
+                        }
+                    },
+                ]
+            }
+        );
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+const registerActionListeners = (channelId, selectedMembers) => {
+    registerActionListener(channelId, selectedMembers, 0);
+    registerActionListener(channelId, selectedMembers, 1);
+}
+
+const registerActionListener = (channelId, selectedMembers, i) => {
+    try {
         // TODO:
-            // check if correct user responded
-                // if not then { say } (with witty snark)
-            // If rejection then { respond } (with witty snark)
-            // If approval then { say } (user accepted, what say you other user?)
-                // try to hide those buttons
-            // figure out if we can use sockets?
-                // if not then do we need a exposed http url?
-            // deploy on AWS or Heroku depending on devops questions
-            // install the app on TS workspace
-            // update the env tokens, channels, exclusions, etc.
-            // stretch goals: add time, availability, gcal integration
-
-        app.action("radio_buttons-action-user1", async (msg) => {
-            await msg.ack();
-            await msg.respond(`You chose: ${msg.action.selected_option.value}`);
-        });
-        app.action("radio_buttons-action-user2", async (msg) => {
-            await msg.ack();
-            await msg.respond(`You chose: ${msg.action.selected_option.value}`);
+        // add schedule for pair bot
+        // deploy on AWS
+        // update the env tokens, channels, exclusions, etc.
+        // expose http url
+        // stretch goals: add time, availability, gcal integration
+        
+        app.action(`radio_buttons-action-user${i}`, async ({ ack, action, respond }) => {
+            await ack();
+            if (action.selected_option.value === `user${i}-no`) {
+                await respond({ delete_original: true});
+                await postRejectionMessage(channelId, selectedMembers[i]);
+                
+            }
+            if (action.selected_option.value === `user${i}-yes`) {
+                await respond({ delete_original: true});
+                await postSuccessMessage(channelId, selectedMembers[i]);
+            }
         });
     } catch (error) {
         console.log(error);
     }
 }
 
-const mapSelectedMembersToBlocks = (selectedMembers) => {
-    return blocksMap.map((block) => {
-        if (block.block_id === 'titleMessage') {
-            return {
-                ...block,
-                text: {
-                    ...block.text,
-                    text: `Hello there! <@${selectedMembers[0]}> & <@${selectedMembers[1]}>, would you like to pair today?`
-                }
+const postSuccessMessage = async (channelId, selectedMember) => {
+    try {
+        await app.client.chat.postMessage(
+            {
+                channel: channelId,
+                text: `<@${selectedMember}> is available to pair! :white_check_mark:`,
             }
-        }
-        if (block.block_id === 'user1Radios') {
-            return {
-                ...block,
-                text: {
-                    ...block.text,
-                    text: `*<@${selectedMembers[0]}>*`
-                }
+        );
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+const postRejectionMessage = async (channelId, selectedMember) => {
+    try {
+        await app.client.chat.postMessage(
+            {
+                channel: channelId,
+                text: `<@${selectedMember}> is unavailable to pair :slightly_frowning_face:`,
             }
-        }
-        if (block.block_id === 'user2Radios') {
-            return {
-                ...block,
-                text: {
-                    ...block.text,
-                    text: `*<@${selectedMembers[1]}>*`
-                }
-            }
-        }
-        return block;
-    });
+        );
+    } catch (error) {
+        console.log(error);
+    }
 }
 
 (async () => {
@@ -141,6 +232,9 @@ const mapSelectedMembersToBlocks = (selectedMembers) => {
         const channelMembers = await getChannelMembers(channelId);
         const filteredChannelMembers = await filterChannelMembers(channelMembers, excludedMemberEmails);
         const selectedMembers = getTwoRandomMembersFromList(filteredChannelMembers);
-        await postMessageBlocks(channelId, selectedMembers);
+        await postTitleMessage(channelId, selectedMembers);
+        await postWhatSayYouMessages(channelId, selectedMembers);
+        await postEphemeralMessages(channelId, selectedMembers);
+        registerActionListeners(channelId, selectedMembers);
     }
 })();

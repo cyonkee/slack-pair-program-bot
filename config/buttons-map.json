@@ -3,7 +3,7 @@
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": "<user1> and <user2>, do you want to pair program today?"
+            "text": "<user0> and <user1>, do you want to pair program today?"
         },
         "accessory": {
             "type": "radio_buttons",
